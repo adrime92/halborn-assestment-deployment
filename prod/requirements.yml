@@ -1,0 +1,5 @@
+---
+- src: git@
+  scm: git
+  version: 
+  name: solution

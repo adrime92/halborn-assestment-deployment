@@ -1,0 +1,59 @@
+---
+stages:
+  - prepare
+  - versions
+  - lint
+  - initial_destroy
+  - deploy
+  - test
+  - destroy
+
+.runner:
+  image: gitlab/gitlab-runner
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+.runner:
+  image: gitlab/gitlab-runner
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+      variables:
+        DEPLOY_ENV: "prod"
+        VAULT_PASS: $SOLUTION_VAULT_PROD
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      variables:
+        DEPLOY_ENV: "stg"
+        VAULT_PASS: $SOLUTION_VAULT_STG
+
+variables:
+  ANSIBLE_VAULT_PASSWORD_FILE: ".vault_pass"
+  ANSIBLE_VERBOSITY: "2"
+
+before_script:
+  - cd $DEPLOY_ENV
+  - echo $VAULT_PASS > .vault_pass
+#  - install prerequisites
+
+syntax_lint:
+  stage: lint
+  extends: .runner
+  script:
+    - cd $DEPLOY_ENV
+    - ansible-lint main.yml
+
+deploy:
+  stage: deploy
+  extends: .runner
+  environment:
+    name: $DEPLOY_ENV
+  script:
+    - cd $DEPLOY_ENV
+    - ansible-playbook main.yml
+
+test:
+  stage: test
+  extends: .runner
+  script:
+    - cd solution/test
+    - >
+      py.test -s -v --connection=ansible --ansible-inventory=hosts.yml unitary_test.py
