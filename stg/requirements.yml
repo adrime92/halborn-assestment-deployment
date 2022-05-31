@@ -1,5 +1,5 @@
 ---
-- src: git
+- src: git+https://github.com/adrime92/halborn-assestment-solution.git
   scm: git
-  version: 
+  version: 1.0.0
   name: solution
